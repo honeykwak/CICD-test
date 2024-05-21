@@ -1,0 +1,34 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -k ./k8s
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}
+
+      - name: Login to Argo CD
+        run: |
+          argocd login ${{ secrets.ARGOCD_SERVER }} --username ${{ secrets.ARGOCD_USERNAME }} --password ${{ secrets.ARGOCD_PASSWORD }} --insecure
+        env:
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_USERNAME: ${{ secrets.ARGOCD_USERNAME }}
+          ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
+
+      - name: Trigger Argo CD Sync
+        run: |
+          argocd app sync argocd/act-back-test
+          argocd app sync argocd/act-db-test
+          argocd app sync argocd/act-front-test
